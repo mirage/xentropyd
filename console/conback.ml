@@ -62,9 +62,8 @@ module ConsoleError = struct
 end
 
 module type CONSOLE = sig
-   include V1_LWT.CONSOLE
+   include V1_LWT.FLOW
      with type 'a io = 'a Lwt.t
-     with type id = string
 end
 
 module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
@@ -76,7 +75,7 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       m >>= function
       | `Ok x -> f x
       | `Eof -> fail (Failure "End of file")
-      | `Error (`Invalid_console x) -> fail (Failure (Printf.sprintf "Invalid_console %s" x)) in
+      | `Error _ -> fail (Failure "Failure reading from CONSOLE") in
 
     let rec read_the_ring after =
       let open Lwt in
@@ -204,12 +203,11 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
     lwt frontend_path = mk_frontend_path (domid, device) in
     write_one (frontend_path ^ "/state") (Conproto.State.to_string Conproto.State.Closed)
 
-  let run (id: string) backend_name (domid,devid) =
+  let run (id: string) backend_name (domid,devid) t =
     let xg = Gnttab.interface_open () in
     let xe = Eventchn.init () in
 
     let open ConsoleError in
-    C.connect id >>= fun t ->
     let ( >>= ) = Lwt.bind in
     lwt backend_path = mk_backend_path backend_name (domid,devid) in
 
@@ -261,7 +259,6 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       Lwt.return stats
     with e ->
       printf "conback caught %s\n%!" (Printexc.to_string e);
-      lwt () = C.disconnect t in
       fail e
 
   let create ?backend_domid ?name backend_name (domid, device) =
