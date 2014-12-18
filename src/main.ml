@@ -13,6 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
+open Lwt
 
 module RF = RandomFlow
 
@@ -24,18 +25,37 @@ module WatchEvents = Xenstore.IntroduceDomain.Make(Client)
 (* We convert the watch events into events which carry the domids *)
 module DomainEvents = Xenstore.DomainWatch.Make(WatchEvents)(Domains)
 
-open Lwt
+let connections = Hashtbl.create 37
+
+let start domid =
+  Printf.printf "Created %d\n%!" domid;
+  Hashtbl.add connections domid ()
+
+let stop domid =
+  Printf.printf "Destroyed %d\n%!" domid;
+  Hashtbl.remove connections domid
 
 let main common max_bytes period_ms =
   let rec loop state =
     DomainEvents.next state
     >>= fun (events, state) ->
     List.iter (function
-    | `Created domid -> Printf.printf "Created %d\n" domid
-    | `Destroyed domid -> Printf.printf "Destroyed %d\n" domid
+    | `Created domid ->
+      start domid
+    | `Destroyed domid ->
+      stop domid
     ) events;
-    flush stdout;
     loop state in
+  (* Shut everything down if we get a signal *)
+  let shutdown_signal _ =
+    Hashtbl.iter (fun domid _ -> stop domid) connections;
+    exit 0 in
+  List.iter
+    (fun signal ->
+      let (_: Lwt_unix.signal_handler_id) = Lwt_unix.on_signal signal shutdown_signal in
+      ()
+    ) [ Sys.sigint; Sys.sigterm ];
+
   Lwt_main.run (loop DomainEvents.initial)
 
 let _ = CommandLine.run main
