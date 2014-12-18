@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
+module RF = RandomFlow
+
 let project_url = "http://github.com/djs55/xentropyd"
 
 (* The client provides read/write access to Xenstore *)
