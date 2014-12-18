@@ -35,4 +35,4 @@ Executable xentropyd
   MainIs:             main.ml
   Custom:             true
   Install:            false
-  BuildDepends:       lwt, lwt.unix, xenstore_xenctrl, console, oUnit, threads, mirage-block-unix
+  BuildDepends:       lwt, lwt.unix, xenstore_xenctrl, console, oUnit, threads, mirage-block-unix, cmdliner

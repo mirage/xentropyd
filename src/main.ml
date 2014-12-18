@@ -16,8 +16,6 @@
 
 module RF = RandomFlow
 
-let project_url = "http://github.com/djs55/xentropyd"
-
 (* The client provides read/write access to Xenstore *)
 module Client = Xenstore.Client.Make(Userspace)
 (* We discover when domains have been created or destroyed by watching
@@ -28,7 +26,7 @@ module DomainEvents = Xenstore.DomainWatch.Make(WatchEvents)(Domains)
 
 open Lwt
 
-let main () =
+let main common max_bytes period_ms =
   let rec loop state =
     DomainEvents.next state
     >>= fun (events, state) ->
@@ -38,6 +36,6 @@ let main () =
     ) events;
     flush stdout;
     loop state in
-  loop DomainEvents.initial
+  Lwt_main.run (loop DomainEvents.initial)
 
-let _ = Lwt_main.run (main ())
+let _ = CommandLine.run main
