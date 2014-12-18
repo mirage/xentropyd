@@ -7,3 +7,16 @@
 *.cmx
 *.cmxs
 *.cmxa
+*.mllib
+*.mldylib
+*.clib
+setup.data
+setup.ml
+setup.log
+_tags
+*.mlpack
+META
+myocamlbuild.ml
+*.odocl
+*.native
+_build

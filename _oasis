@@ -7,17 +7,26 @@ License:     ISC
 Plugins:     META (0.3)
 BuildTools:  ocamlbuild
 
-Library log
-  CompiledObject:     best
-  Path:               log
-  Modules:            Logging
-  BuildDepends:       lwt, sexplib, sexplib.syntax
-
-Library domains
+Library xenstore
+  Pack:               true
   CompiledObject:     best
   Pack:               true
-  Path:               domains
-  Modules:            Ls, Watch, IO_lwt
+  Path:               core
+  Modules:            Protocol, Handle, Client, DomainWatch, IntroduceDomain, BufferedReader, PacketReader, WriteBufferStream, PacketWriter, Logging, IO_lwt, S
+  BuildDepends:       cstruct (>= 0.6.0), cstruct.syntax, lwt, lwt.syntax, uri, sexplib, sexplib.syntax, stringext
+
+Library xenstore_xenctrl
+  CompiledObject:     best
+  Path:               xenctrl
   CSources:           domains_stubs.c
   CCLib:              -lxenctrl
-  BuildDepends:       cstruct (>= 0.6.0), cstruct.syntax, lwt, io-page, sexplib, sexplib.syntax, log
+  Modules:            Userspace, Domains
+  BuildDepends:       lwt, lwt.unix, xenstore, cstruct.lwt, io-page, io-page.unix
+
+Executable xentropyd
+  CompiledObject:     best
+  Path:               src
+  MainIs:             main.ml
+  Custom:             true
+  Install:            false
+  BuildDepends:       lwt, lwt.unix, xenstore_xenctrl, oUnit, threads
