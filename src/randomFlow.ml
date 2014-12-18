@@ -14,32 +14,36 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 open Lwt
-type 'a io = 'a Lwt.t
 
-let dev_random = Block.connect "/dev/random"
+module Make(C: V1.CLOCK) = struct
 
-type buffer = Cstruct.t
+  type 'a io = 'a Lwt.t
 
-type flow = {
-  device: Block.t;
-  buffer: Cstruct.t;
-  (* We limit the amount of data that can be read in a time period *)
-  mutable next_time_period: float;
-}
+  let dev_random = Block.connect "/dev/random"
 
-type error = Block.error
+  type buffer = Cstruct.t
 
-let read flow =
-  (* FIXME: need to read the clock *)
-  Block.read flow.device 0L [ flow.buffer ]
-  >>= function
-  | `Error _ ->
-    return (`Error (`Unknown "Error from Block.read"))
-  | `Ok () ->
-    (* FIXME: clock? *)
-    return (`Ok flow.buffer)
+  type flow = {
+    device: Block.t;
+    buffer: Cstruct.t;
+    (* We limit the amount of data that can be read in a time period *)
+    mutable next_time_period: float;
+  }
 
-let write _ _ = return (`Error `Unimplemented)
-let writev _ _ = return (`Error `Unimplemented)
+  type error = Block.error
 
-let close { device } = Block.disconnect device
+  let read flow =
+    (* FIXME: need to read the clock *)
+    Block.read flow.device 0L [ flow.buffer ]
+    >>= function
+    | `Error _ ->
+      return (`Error (`Unknown "Error from Block.read"))
+    | `Ok () ->
+      (* FIXME: clock? *)
+      return (`Ok flow.buffer)
+
+  let write _ _ = return (`Error `Unimplemented)
+  let writev _ _ = return (`Error `Unimplemented)
+
+  let close { device } = Block.disconnect device
+end

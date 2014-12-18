@@ -14,4 +14,5 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-include V1_LWT.FLOW
+module Make(C: V1.CLOCK) : V1_LWT.FLOW
+(** Create a flow for reading random data with a rate-limiting mechanism *)
