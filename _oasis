@@ -1,0 +1,23 @@
+OASISFormat: 0.3
+Name:        xentropyd
+Version:     0.9
+Synopsis:    Provide entropy to Xen VMs
+Authors:     Dave Scott
+License:     ISC
+Plugins:     META (0.3)
+BuildTools:  ocamlbuild
+
+Library log
+  CompiledObject:     best
+  Path:               log
+  Modules:            Logging
+  BuildDepends:       lwt, sexplib, sexplib.syntax
+
+Library domains
+  CompiledObject:     best
+  Pack:               true
+  Path:               domains
+  Modules:            Ls, Watch, IO_lwt
+  CSources:           domains_stubs.c
+  CCLib:              -lxenctrl
+  BuildDepends:       cstruct (>= 0.6.0), cstruct.syntax, lwt, io-page, sexplib, sexplib.syntax, log
