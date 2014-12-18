@@ -1,0 +1,23 @@
+opam-version: "1"
+maintainer: "dave.scott@citrix.com"
+build: [
+  [ "oasis" "setup" ]
+  [ "ocaml" "setup.ml" "-configure" ]
+  [ "ocaml" "setup.ml" "-build" ]
+]
+depends: [
+  "cstruct" {>= "0.6.0"}
+  "lwt"
+  "sexplib"
+  "ocamlfind"
+  "io-page"
+  "xen-evtchn"
+  "shared-memory-ring"
+  "cmdliner"
+]
+depexts: [
+  [["debian"] ["libxen-dev" "uuid-dev"]]
+  [["ubuntu"] ["libxen-dev" "uuid-dev"]]
+  [["centos"] ["xen-devel"]]
+  [["xenserver"] ["xen-dom0-libs-devel" "xen-libs-devel"]]
+]
