@@ -14,5 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-module Make(C: V1.CLOCK) : V1_LWT.FLOW
-(** Create a flow for reading random data with a rate-limiting mechanism *)
+module Make(C: V1.CLOCK) : sig
+  include V1_LWT.FLOW
+
+  val create: max_bytes:int -> period_ms:int -> unit -> flow Lwt.t
+  (** [create ~max_bytes ~period_ms ()] creates a flow which allows reading
+      random data (e.g. from /dev/random). Reading is rate-limited, allowing
+      at most [max_bytes] to be read every [period_ms] milliseconds. *)
+end

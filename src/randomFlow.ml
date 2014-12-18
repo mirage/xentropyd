@@ -19,7 +19,11 @@ module Make(C: V1.CLOCK) = struct
 
   type 'a io = 'a Lwt.t
 
-  let dev_random = Block.connect "/dev/random"
+  let dev_random_t =
+    Block.connect "/dev/random"
+    >>= function
+    | `Ok t -> return t
+    | `Error _ -> fail (Failure "Failed to open /dev/random")
 
   type buffer = Cstruct.t
 
@@ -27,19 +31,36 @@ module Make(C: V1.CLOCK) = struct
     device: Block.t;
     buffer: Cstruct.t;
     (* We limit the amount of data that can be read in a time period *)
-    mutable next_time_period: float;
+    mutable no_more_reading_until: float;
+    period_ms: int;
   }
+
+  let create ~max_bytes ~period_ms () =
+    dev_random_t
+    >>= fun device ->
+    let buffer = Cstruct.create max_bytes in
+    let no_more_reading_until = 0. in
+    return { device; buffer; no_more_reading_until; period_ms }
 
   type error = Block.error
 
   let read flow =
-    (* FIXME: need to read the clock *)
+    let rec wait () =
+      let time = C.time () in
+      if time > flow.no_more_reading_until
+      then return ()
+      else
+        Lwt_unix.sleep (flow.no_more_reading_until -. time)
+        >>= fun () ->
+        wait () in
+    wait ()
+    >>= fun () ->
     Block.read flow.device 0L [ flow.buffer ]
     >>= function
     | `Error _ ->
       return (`Error (`Unknown "Error from Block.read"))
     | `Ok () ->
-      (* FIXME: clock? *)
+      flow.no_more_reading_until <- (C.time ()) +. (float_of_int flow.period_ms /. 1000.0);
       return (`Ok flow.buffer)
 
   let write _ _ = return (`Error `Unimplemented)
