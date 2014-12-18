@@ -23,10 +23,16 @@ Library xenstore_xenctrl
   Modules:            Userspace, Domains
   BuildDepends:       lwt, lwt.unix, xenstore, cstruct.lwt, io-page, io-page.unix
 
+Library console
+  Pack:               true
+  Path:               console
+  Modules:            S, Conback, Conproto
+  BuildDepends:       lwt, lwt.syntax, xenstore, mirage-types.lwt, xen-gnt, xen-evtchn, shared-memory-ring.console
+
 Executable xentropyd
   CompiledObject:     best
   Path:               src
   MainIs:             main.ml
   Custom:             true
   Install:            false
-  BuildDepends:       lwt, lwt.unix, xenstore_xenctrl, oUnit, threads
+  BuildDepends:       lwt, lwt.unix, xenstore_xenctrl, console, oUnit, threads
