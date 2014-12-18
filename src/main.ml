@@ -13,11 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-open Lwt
-let debug fmt = Logging.debug "xs" fmt
-let error fmt = Logging.error "xs" fmt
-
-module RF = RandomFlow
 
 (* The client provides read/write access to Xenstore *)
 module Client = Xenstore.Client.Make(Userspace)
@@ -26,6 +21,14 @@ module Client = Xenstore.Client.Make(Userspace)
 module WatchEvents = Xenstore.IntroduceDomain.Make(Client)
 (* We convert the watch events into events which carry the domids *)
 module DomainEvents = Xenstore.DomainWatch.Make(WatchEvents)(Domains)
+(* We read random data from the system with a rate-limter *)
+module RandomFlow = RandomFlow.Make(Clock)
+(* We offer the random data to VMs over the console protocol *)
+module ConsoleServer = Conback.Make(Unix_activations)(Client)(RandomFlow)
+
+open Lwt
+let debug fmt = Logging.debug "xs" fmt
+let error fmt = Logging.error "xs" fmt
 
 let connections = Hashtbl.create 37
 
