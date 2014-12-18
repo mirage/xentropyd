@@ -30,4 +30,8 @@ val logger: logger
 
 val get: logger -> string list Lwt.t
 (** [get logger] returns any available log lines or, if none are available,
-    blocks until some are available. *)
+    blocks until some are available or the logger is shutdown. *)
+
+val shutdown: logger -> unit
+(** [shutdown logger] causes calls to [get] to drain the current buffers
+    and then return [] *)

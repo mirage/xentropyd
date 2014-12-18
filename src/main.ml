@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 open Lwt
+let debug fmt = Logging.debug "xs" fmt
+let error fmt = Logging.error "xs" fmt
 
 module RF = RandomFlow
 
@@ -28,11 +30,11 @@ module DomainEvents = Xenstore.DomainWatch.Make(WatchEvents)(Domains)
 let connections = Hashtbl.create 37
 
 let start domid =
-  Printf.printf "Created %d\n%!" domid;
+  debug "Created %d" domid;
   Hashtbl.add connections domid ()
 
 let stop domid =
-  Printf.printf "Destroyed %d\n%!" domid;
+  debug "Destroyed %d" domid;
   Hashtbl.remove connections domid
 
 let main common max_bytes period_ms =
@@ -47,9 +49,25 @@ let main common max_bytes period_ms =
     ) events;
     loop state in
   (* Shut everything down if we get a signal *)
+  let rec logging_thread () =
+      Logging.(get logger) >>= function
+      | [] -> return ()
+      | lines ->
+        Lwt_list.iter_s
+          (fun x ->
+             Lwt_io.write Lwt_io.stderr x >>= fun () ->
+             Lwt_io.write Lwt_io.stderr "\n"
+          ) lines
+        >>= fun () ->
+        logging_thread () in
+  let t = logging_thread () in
   let shutdown_signal _ =
     Hashtbl.iter (fun domid _ -> stop domid) connections;
-    exit 0 in
+    Logging.(shutdown logger);
+    debug "Shutting down";
+    (* Actually exit after the buffers have been flushed *)
+    let _ = t >>= fun () -> exit 0; return () in
+    () in
   List.iter
     (fun signal ->
       let (_: Lwt_unix.signal_handler_id) = Lwt_unix.on_signal signal shutdown_signal in

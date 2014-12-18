@@ -24,6 +24,7 @@ type logger = {
   elements: int ref;
   max_elements: int;
   dropped_elements: int ref;
+  mutable shutdown: bool;
 }
 
 let create max_elements =
@@ -43,6 +44,7 @@ let create max_elements =
     elements = !elements;
     max_elements = max_elements;
     dropped_elements = !dropped_elements;
+    shutdown = false;
   }
 
 let get (logger: logger) =
@@ -56,13 +58,15 @@ let get (logger: logger) =
 
   (* Grab as many elements as we can without blocking *)
   let all = Lwt_stream.get_available logger.stream in
-  if all <> []
+  if all <> [] || logger.shutdown
   then return_lines all
   else begin
     (* Block for at least one line *)
     Lwt_stream.nget 1 logger.stream >>= fun all ->
     return_lines all
   end
+
+let shutdown logger = logger.shutdown <- true
 
 (* General system logging *)
 let logger = create 512
