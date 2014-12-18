@@ -37,7 +37,10 @@ let stop domid =
   debug "Destroyed %d" domid;
   Hashtbl.remove connections domid
 
-let main common max_bytes period_ms =
+let main common daemon max_bytes period_ms =
+  if daemon
+  then Lwt_daemon.daemonize ~syslog:true ();
+
   let rec loop state =
     DomainEvents.next state
     >>= fun (events, state) ->

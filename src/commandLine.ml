@@ -57,13 +57,16 @@ let command f =
     `S "DESCRIPTION";
     `P "Watch for domains being created, and connect to them over the console protocol and write entropy values.";
   ] in
+  let daemon =
+    let doc = "Detach from the terminal and daemonize." in
+    Arg.(value & flag & info [ "daemon" ] ~doc) in
   let max_bytes =
     let doc = "The maximum number of bytes of entropy provided to the domain in each time period." in
     Arg.(value & opt int 1024 & info [ "max-bytes" ] ~doc) in
   let period_ms =
     let doc = "The length of each time period in milliseconds." in
     Arg.(value & opt int (60 * 1000) & info [ "period-ms" ] ~doc) in
-  Term.(ret (pure f $ common_options_t $ max_bytes $ period_ms )),
+  Term.(ret (pure f $ common_options_t $ daemon $ max_bytes $ period_ms )),
   Term.info "xentropyd" ~version:"0.1" ~sdocs:_common_options ~doc ~man
 
 let run f =
