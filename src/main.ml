@@ -26,24 +26,40 @@ module RandomFlow = RandomFlow.Make(Clock)
 (* We offer the random data to VMs over the console protocol *)
 module ConsoleServer = Conback.Make(Unix_activations)(Client)(RandomFlow)
 
+(* The name of the console which will receive the data *)
+let name = "org.openmirage.entropy.1"
+
 open Lwt
 let debug fmt = Logging.debug "xs" fmt
 let error fmt = Logging.error "xs" fmt
 
 let connections = Hashtbl.create 37
 
+let backend_name = "xentropyd"
+
 let start domid =
   debug "Noticed domain %d" domid;
   ConsoleServer.find_free_devid domid
   >>= fun devid ->
   debug "Domain %d has free console with devid %d" domid devid;
-  Hashtbl.add connections domid ();
-  return ()
+  Client.(immediate (read "domid")) >>= function
+  | None ->
+    error "Failed to read my own domid from Xenstore.";
+    return ()
+  | Some backend_domid ->
+    let backend_domid = int_of_string backend_domid in
+    ConsoleServer.create ~name ~backend_domid backend_name (domid, devid)
+    >>= fun () ->
+    debug "Created connection to %d.%d" domid devid;
+    Hashtbl.add connections domid (domid, devid);
+    return ()
 
 let stop domid =
-  debug "Destroyed %d" domid;
+  debug "Shutting down connection to domain %d" domid;
+  let c = Hashtbl.find connections domid in
   Hashtbl.remove connections domid;
-  return ()
+  debug "Destroying connection to %d.%d" (fst c) (snd c);
+  ConsoleServer.destroy backend_name c
 
 let main common daemon max_bytes period_ms =
   if daemon
