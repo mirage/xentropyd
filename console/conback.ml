@@ -203,7 +203,7 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
     lwt frontend_path = mk_frontend_path (domid, device) in
     write_one (frontend_path ^ "/state") (Conproto.State.to_string Conproto.State.Closed)
 
-  let run (id: string) backend_name (domid,devid) t =
+  let run backend_name (domid,devid) t =
     let xg = Gnttab.interface_open () in
     let xe = Eventchn.init () in
 

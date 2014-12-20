@@ -37,8 +37,10 @@ let connections = Hashtbl.create 37
 
 let backend_name = "xentropyd"
 
-let start domid =
-  debug "Noticed domain %d" domid;
+let start ~max_bytes ~period_ms domid =
+  debug "Noticed domain %d, will provide up to %d bytes in %d milliseconds" domid max_bytes period_ms;
+  RandomFlow.create ~max_bytes ~period_ms ()
+  >>= fun random ->
   ConsoleServer.find_free_devid domid
   >>= fun devid ->
   debug "Domain %d has free console with devid %d" domid devid;
@@ -51,6 +53,12 @@ let start domid =
     ConsoleServer.create ~name ~backend_domid backend_name (domid, devid)
     >>= fun () ->
     debug "Created connection to %d.%d" domid devid;
+    let _ =
+      ConsoleServer.run backend_name (domid, devid) random
+      >>= fun stats ->
+      debug "Connection %d.%d bytes read: %d; bytes written: %d" domid devid
+        stats.Conback.total_read stats.Conback.total_write;
+      return () in
     Hashtbl.add connections domid (domid, devid);
     return ()
 
@@ -70,7 +78,7 @@ let main common daemon max_bytes period_ms =
     >>= fun (events, state) ->
     Lwt_list.iter_s (function
     | `Created domid ->
-      start domid
+      start ~max_bytes ~period_ms domid
     | `Destroyed domid ->
       stop domid
     ) events
