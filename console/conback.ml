@@ -300,4 +300,18 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       >>= fun () ->
       rm frontend_path
     )
+
+  let find_free_devid domid =
+    Lwt.catch
+      (fun () ->immediate (directory (Printf.sprintf "/local/domain/%d/device/console" domid)))
+      (function Xenstore.Protocol.Enoent _ -> return [] | e -> fail e)
+    >>= fun used ->
+    let free =
+      used
+      |> List.map (fun x -> try Some (int_of_string x) with _ -> None)
+      |> List.fold_left (fun acc this -> match this with Some x -> x :: acc | None -> acc) []
+      |> List.fold_left max 0 (* console 0 is handled specially *)
+      |> (fun x -> x + 1) in
+    return free
 end
+

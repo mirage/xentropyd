@@ -33,12 +33,17 @@ let error fmt = Logging.error "xs" fmt
 let connections = Hashtbl.create 37
 
 let start domid =
-  debug "Created %d" domid;
-  Hashtbl.add connections domid ()
+  debug "Noticed domain %d" domid;
+  ConsoleServer.find_free_devid domid
+  >>= fun devid ->
+  debug "Domain %d has free console with devid %d" domid devid;
+  Hashtbl.add connections domid ();
+  return ()
 
 let stop domid =
   debug "Destroyed %d" domid;
-  Hashtbl.remove connections domid
+  Hashtbl.remove connections domid;
+  return ()
 
 let main common daemon max_bytes period_ms =
   if daemon
@@ -47,12 +52,13 @@ let main common daemon max_bytes period_ms =
   let rec loop state =
     DomainEvents.next state
     >>= fun (events, state) ->
-    List.iter (function
+    Lwt_list.iter_s (function
     | `Created domid ->
       start domid
     | `Destroyed domid ->
       stop domid
-    ) events;
+    ) events
+    >>= fun () ->
     loop state in
   (* Shut everything down if we get a signal *)
   let rec logging_thread () =
@@ -68,7 +74,7 @@ let main common daemon max_bytes period_ms =
         logging_thread () in
   let t = logging_thread () in
   let shutdown_signal _ =
-    Hashtbl.iter (fun domid _ -> stop domid) connections;
+    Hashtbl.iter (fun domid _ -> Lwt_main.run (stop domid)) connections;
     Logging.(shutdown logger);
     debug "Shutting down";
     (* Actually exit after the buffers have been flushed *)
