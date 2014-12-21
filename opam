@@ -12,6 +12,7 @@ depends: [
   "ocamlfind"
   "io-page"
   "xen-evtchn"
+  "xen-gnt"
   "shared-memory-ring"
   "cmdliner"
   "cstruct"
