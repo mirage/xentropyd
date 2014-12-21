@@ -1,0 +1,13 @@
+# OASIS_START
+# DO NOT EDIT (digest: 9c703033699271dd2d26c1d4e8a6ae67)
+version = "0.9"
+description = "Provide entropy to Xen VMs"
+requires =
+"cstruct cstruct.syntax lwt lwt.syntax uri sexplib sexplib.syntax stringext log"
+archive(byte) = "xenstore.cma"
+archive(byte, plugin) = "xenstore.cma"
+archive(native) = "xenstore.cmxa"
+archive(native, plugin) = "xenstore.cmxs"
+exists_if = "xenstore.cma"
+# OASIS_STOP
+

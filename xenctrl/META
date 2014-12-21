@@ -1,0 +1,12 @@
+# OASIS_START
+# DO NOT EDIT (digest: 1899d557baa3432566807c0f8cb70767)
+version = "0.9"
+description = "Provide entropy to Xen VMs"
+requires = "lwt lwt.unix xenstore cstruct.lwt io-page io-page.unix"
+archive(byte) = "xenstore_xenctrl.cma"
+archive(byte, plugin) = "xenstore_xenctrl.cma"
+archive(native) = "xenstore_xenctrl.cmxa"
+archive(native, plugin) = "xenstore_xenctrl.cmxs"
+exists_if = "xenstore_xenctrl.cma"
+# OASIS_STOP
+

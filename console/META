@@ -1,0 +1,13 @@
+# OASIS_START
+# DO NOT EDIT (digest: 9b4e1388849fd28dee37a32925fda19b)
+version = "0.9"
+description = "Provide entropy to Xen VMs"
+requires =
+"lwt lwt.syntax xenstore mirage-types.lwt xen-gnt xen-evtchn shared-memory-ring.console"
+archive(byte) = "console.cma"
+archive(byte, plugin) = "console.cma"
+archive(native) = "console.cmxa"
+archive(native, plugin) = "console.cmxs"
+exists_if = "console.cma"
+# OASIS_STOP
+
