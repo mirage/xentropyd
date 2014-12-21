@@ -92,20 +92,23 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
 
     let rec read_the_ring after : unit Lwt.t =
       let open Lwt in
-      let seq, avail = Console_ring.Ring.Front.Reader.read t.ring in
-      C.write c avail >>|= fun () ->
+      let seq, avail = Console_ring.Ring.Back.Reader.read t.ring in
       let n = Cstruct.len avail in
-      stats.total_read <- stats.total_read + n;
-      let seq = Int32.(add seq (of_int n)) in
-      Console_ring.Ring.Front.Reader.advance t.ring seq;
-      Eventchn.notify t.xe t.evtchn;
-      pick [ map (fun e -> `Next e) (A.after t.evtchn after);
-             wait_shutdown () ]
-      >>= function
-      | `Next next ->
-        read_the_ring next
-      | `Shutdown ->
-        return () in
+      if n > 0 then begin
+        C.write c avail >>|= fun () ->
+        stats.total_read <- stats.total_read + n;
+        let seq = Int32.(add seq (of_int n)) in
+        Console_ring.Ring.Back.Reader.advance t.ring seq;
+        Eventchn.notify t.xe t.evtchn;
+        read_the_ring after
+      end else
+        pick [ map (fun e -> `Next e) (A.after t.evtchn after);
+               wait_shutdown () ]
+        >>= function
+        | `Next next ->
+          read_the_ring next
+        | `Shutdown ->
+          return () in
 
     let rec read_the_flow after : unit Lwt.t =
       let open Lwt in
