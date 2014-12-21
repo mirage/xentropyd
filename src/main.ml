@@ -38,7 +38,11 @@ let connections = Hashtbl.create 37
 let backend_name = "xentropyd"
 
 let start ~max_bytes ~period_ms domid =
-  if Hashtbl.mem connections domid
+  (* THis should actually be 'domid = my domid, since we might not be in domid 0 *)
+  if domid = 0 then begin
+    debug "Ignoring domain 0: there should be plenty of entropy here";
+    return ()
+  end else if Hashtbl.mem connections domid
   then return ()
   else begin
     debug "Noticed domain %d, will provide up to %d bytes in %d milliseconds" domid max_bytes period_ms;
@@ -71,6 +75,9 @@ let stop domid =
     debug "Shutting down connection to domain %d" domid;
     let c = Hashtbl.find connections domid in
     Hashtbl.remove connections domid;
+    debug "Setting domain %d frontend state to Closing" (fst c);
+    ConsoleServer.request_close backend_name c
+    >>= fun () ->
     debug "Destroying connection to %d.%d" (fst c) (snd c);
     ConsoleServer.destroy backend_name c
   end else return ()

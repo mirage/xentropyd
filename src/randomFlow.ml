@@ -21,7 +21,7 @@ module Make(C: V1.CLOCK) = struct
 
   (* We never close this file descriptor *)
   let dev_random_t =
-    Lwt_unix.openfile "/dev/random" [ Lwt_unix.O_RDONLY ] 0
+    Lwt_unix.openfile "/dev/urandom" [ Lwt_unix.O_RDONLY ] 0
 
   type buffer = Cstruct.t
 
@@ -45,10 +45,11 @@ module Make(C: V1.CLOCK) = struct
   let read flow =
     let rec wait () =
       let time = C.time () in
-      if time > flow.no_more_reading_until
+      let tosleep = flow.no_more_reading_until -. time in
+      if tosleep <= 0.
       then return ()
       else
-        Lwt_unix.sleep (flow.no_more_reading_until -. time)
+        Lwt_unix.sleep tosleep
         >>= fun () ->
         wait () in
     wait ()

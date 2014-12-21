@@ -68,16 +68,29 @@ end
 
 module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
 
-  let service_thread t c stats =
+  let service_thread t c stats unbind_fn =
 
     let (>>|=) m f =
       let open Lwt in
       m >>= function
       | `Ok x -> f x
-      | `Eof -> fail (Failure "End of file")
-      | `Error _ -> fail (Failure "Failure reading from CONSOLE") in
+      | `Eof ->
+        fail (Failure "End of file")
+      | `Error _ ->
+        fail (Failure "Failure reading from FLOW") in
 
-    let rec read_the_ring after =
+    let shutdown_in_progress = ref false in
+    let shutdown_c = Lwt_condition.create () in
+    let request_shutdown () =
+      shutdown_in_progress := true;
+      Lwt_condition.broadcast shutdown_c () in
+    let rec wait_shutdown () =
+      let open Lwt in
+      if !shutdown_in_progress
+      then return `Shutdown
+      else Lwt_condition.wait shutdown_c >>= fun () -> wait_shutdown () in
+
+    let rec read_the_ring after : unit Lwt.t =
       let open Lwt in
       let seq, avail = Console_ring.Ring.Front.Reader.read t.ring in
       C.write c avail >>|= fun () ->
@@ -86,20 +99,33 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       let seq = Int32.(add seq (of_int n)) in
       Console_ring.Ring.Front.Reader.advance t.ring seq;
       Eventchn.notify t.xe t.evtchn;
-      A.after t.evtchn after >>= fun next ->
-      read_the_ring next in
+      pick [ map (fun e -> `Next e) (A.after t.evtchn after);
+             wait_shutdown () ]
+      >>= function
+      | `Next next ->
+        read_the_ring next
+      | `Shutdown ->
+        return () in
 
-    let rec read_the_console after =
+    let rec read_the_flow after : unit Lwt.t =
       let open Lwt in
-      C.read c >>|= fun buffer ->
+      pick [ map (fun x -> `Flow x) (C.read c);
+             wait_shutdown () ]
+      >>= function
+      | `Shutdown -> return ()
+      | `Flow x ->
+      (return x) >>|= fun buffer ->
       let rec loop after buffer =
         if Cstruct.len buffer = 0
-        then return after
+        then return (`Next after)
         else begin
           let seq, avail = Console_ring.Ring.Back.Writer.write t.ring in
           if Cstruct.len avail = 0 then begin
-            A.after t.evtchn after >>= fun next ->
-            loop next buffer
+            pick [ map (fun e -> `Next e) (A.after t.evtchn after);
+                   wait_shutdown () ]
+            >>= function
+            | `Next next -> loop next buffer
+            | `Shutdown -> return `Shutdown
           end else begin
             let n = min (Cstruct.len avail) (Cstruct.len buffer) in
             Cstruct.blit buffer 0 avail 0 n;
@@ -109,12 +135,40 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
             loop after (Cstruct.shift buffer n)
           end
         end in
-      loop after buffer >>= fun after ->
-      read_the_console after in
+      loop after buffer >>= function
+      | `Next after -> read_the_flow after
+      | `Shutdown -> return () in
+    let (a: unit Lwt.t) =
+      let open Lwt in
+      catch
+        (fun () -> read_the_ring A.program_start)
+        (fun e -> printf "read_the_ring caught %s\n%!" (Printexc.to_string e); return ())
+      >>= fun () ->
+      printf "read_the_ring finished\n%!";
+      return () in
+    let (b: unit Lwt.t) =
+      let open Lwt in
+      catch
+        (fun () -> read_the_flow A.program_start)
+        (fun e -> printf "read_the_flow caught %s\n%!" (Printexc.to_string e); return ())
+      >>= fun () ->
+      printf "read_the_flow finished\n%!";
+      return () in
 
-    let (a: unit Lwt.t) = read_the_ring A.program_start in
-    let (b: unit Lwt.t) = read_the_console A.program_start in
-    Lwt.join [a; b]
+    let (_: unit Lwt.t) =
+      let open Lwt in
+      Lwt.join [a; b]
+      >>= fun () ->
+      printf "Releasing resources\n%!";
+      unbind_fn ();
+      return () in
+
+    let t, _ = Lwt.task () in
+    on_cancel t (fun () ->
+      printf "Cancelling ring service_threads\n%!";
+      request_shutdown ()
+    );
+    t
 
   let init xg xe domid ring_info c =
     let evtchn = Eventchn.bind_interdomain xe domid ring_info.RingInfo.event_channel in
@@ -126,11 +180,12 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       let ring = Io_page.to_cstruct (Gnttab.Local_mapping.to_buf mapping) in
       let t = { domid; xg; xe; evtchn; ring } in
       let stats = { total_read = 0; total_write = 0 } in
-      let th = service_thread t c stats in
-      on_cancel th (fun () ->
-        let () = Gnttab.unmap_exn xg mapping in ()
-      );
-      th, stats
+      let unbind_fn () =
+        printf "Gnttab.unmap_exn\n%!";
+        let () = Gnttab.unmap_exn xg mapping in ();
+        Eventchn.unbind xe evtchn in
+      let t = service_thread t c stats unbind_fn in
+      t, stats
 
   open X
 
@@ -237,7 +292,6 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       let ring_info = match Conproto.RingInfo.of_assoc_list frontend with
         | `OK x -> x
         | `Error x -> failwith x in
-      printf "%s\n%!" (Conproto.RingInfo.to_string ring_info);
 
       let be_thread, stats = init xg xe domid ring_info t in
       lwt () = writev (List.map (fun (k, v) -> backend_path ^ "/" ^ k, v) (Conproto.State.to_assoc_list Conproto.State.Connected)) in
@@ -246,7 +300,8 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
         let open M in
           read (frontend_path ^ "/state")
           >>= function
-          | None -> return (`Ok ())
+          | None ->
+            return (`Ok ())
           | Some state ->
             if Conproto.State.of_string state <> (Some Conproto.State.Closed)
             then return `Retry
