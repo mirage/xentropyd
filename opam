@@ -14,7 +14,7 @@ depends: [
   "xen-evtchn"
   "shared-memory-ring"
   "cmdliner"
-  "mirage-block-unix"
+  "cstruct"
 ]
 depexts: [
   [["debian"] ["libxen-dev" "uuid-dev"]]
