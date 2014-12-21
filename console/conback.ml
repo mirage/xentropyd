@@ -169,7 +169,7 @@ module Make(A: ACTIVATIONS)(X: Xenstore.S.CLIENT)(C: CONSOLE) = struct
       let open M in
       let rec loop acc = function
       | k :: remaining ->
-        read k
+        read (Filename.concat path k)
         >>= (function
         | None -> loop acc remaining
         | Some v -> loop ((k, v) :: acc) remaining)
