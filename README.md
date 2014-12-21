@@ -8,7 +8,7 @@ To start the daemon:
 
 ```sudo xentropy --daemon```
 
-The entropy data is currently read from `/dev/random` and sent
+The entropy data is currently read from `/dev/urandom` and sent
 to the domain on a specially named "console" (also called a "channel").
 `xentropyd` applies a simple rate-limiter to each connection to
 prevent any domain stealing all of dom0's entropy.
