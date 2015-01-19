@@ -58,6 +58,10 @@ module Make(C: V1.CLOCK) = struct
 
   type error = [ `Unimplemented | `Handshake_failed ]
 
+  let error_message = function
+  | `Unimplemented -> "Unimplemented"
+  | `Handshake_failed -> "Handshake failed"
+
   let read flow =
     let rec handshake () =
       if flow.handshake_received then begin
