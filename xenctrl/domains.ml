@@ -31,7 +31,7 @@ open Lwt
 let batch_size = 512 (* number of domains to query in one hypercall *)
 
 let sizeof = stub_sizeof_domaininfo_t ()
-let getdomaininfo_buf = Cstruct.of_bigarray (Io_page.get (batch_size * sizeof / 4096))
+let getdomaininfo_buf = Io_page.to_cstruct (Io_page.get (batch_size * sizeof / 4096))
 
 let domain_getinfolist lowest_domid =
   let number_found = stub_domain_getinfolist lowest_domid batch_size getdomaininfo_buf in
