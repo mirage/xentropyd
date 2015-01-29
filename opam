@@ -6,6 +6,7 @@ build: [
   [ "ocaml" "setup.ml" "-build" ]
 ]
 depends: [
+  "oasis"
   "cstruct" {>= "0.6.0"}
   "lwt"
   "sexplib"
