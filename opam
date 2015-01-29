@@ -6,6 +6,7 @@ build: [
   [ "ocaml" "setup.ml" "-build" ]
 ]
 depends: [
+  "oasis"
   "cstruct" {>= "0.6.0"}
   "lwt"
   "sexplib"
@@ -16,6 +17,10 @@ depends: [
   "shared-memory-ring"
   "cmdliner"
   "cstruct"
+  "mirage-clock-unix"
+  "mirage-types"
+  "stringext"
+  "uri"
 ]
 depexts: [
   [["debian"] ["libxen-dev" "uuid-dev"]]
