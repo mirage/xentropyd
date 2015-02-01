@@ -18,5 +18,5 @@ prevent any domain stealing all of dom0's entropy.
 [virtio-rng](http://log.amitshah.net/2013/01/about-random-numbers-and-virtual-machines/), except that
 `xentropyd` targets Xen and works with both PV and HVM domains.
 
-Version 0.1 of the [entropy transport protocol](doc/protocol.md) is
+Version 1 of the [entropy transport protocol](doc/protocol.md) is
 defined here.
