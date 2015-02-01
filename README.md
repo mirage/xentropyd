@@ -20,3 +20,19 @@ prevent any domain stealing all of dom0's entropy.
 
 Version 1 of the [entropy transport protocol](doc/protocol.md) is
 defined here.
+
+Installing
+----------
+
+First install [opam](https://opam.ocaml.org/doc/Install.html).
+
+Second install necessary headers e.g.
+```
+apt-get install libxen-dev
+```
+
+Third build the binary
+```
+opam install xentropyd
+```
+
